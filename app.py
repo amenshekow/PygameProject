@@ -2,6 +2,7 @@ import pygame
 import os
 import sys
 
+from random import randint
 
 size = width, height = 1225, 700
 screen = pygame.display.set_mode(size)
@@ -27,7 +28,7 @@ def load_image(name, colorkey=None):
 # Зеркальные координаты для другого поля
 
 def invert(pos):
-    return width - pos[0], height - pos[1] - 10
+    return width - pos[0] - 11, height - pos[1] - 20
 
 
 #Задний фон игры
@@ -110,18 +111,19 @@ class Interactive(pygame.sprite.Sprite):
 # Базовый класс для юнитов
 
 class Unit(pygame.sprite.Sprite):
-    def __init__(self, size, pos, image_p, attack_r, power, hp, speed, all_sprites, user, field):
-        super().__init__()
-        self.all_sprites = all_sprites
+    def __init__(self, size, pos, image_p, attack_r, visual_r, power, hp, speed, units_sprites, user):
+        super().__init__(units_sprites)
+        self.units_sprites = units_sprites
         self.image = load_image(image_p, colorkey='black')
         self.image = pygame.transform.scale(self.image, size)
+        self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
         self.rect.centerx = pos[0]
         self.rect.centery = pos[1]
         self.pos = pos
-        self.field = field
 
         self.attack_r = attack_r
+        self.visual_r = visual_r
         self.power = power
         self.hp = hp
         self.speed = speed
@@ -134,41 +136,96 @@ class Unit(pygame.sprite.Sprite):
         self.targeting()
         self.moving()
 
-    # Движение к цели
+    # Движение к цели и столкновения
 
     def moving(self):
         if self.speed != 0:
             if self.temp_target_pos:
                 self.target_pos = self.temp_target_pos
-            dx = self.target_pos[0] - self.rect.centerx
-            dy = self.target_pos[1] - self.rect.centery
-            d = (dx ** 2 + dy ** 2) ** 0.5
-            if d > 0:
-                dx /= d
-                dy /= d
-                self.rect.x += dx * self.speed
-                self.rect.y += dy * self.speed
+
+            # Список объектов, с которыми есть накладывание масок
+            collide_list = [spr for spr in pygame.sprite.spritecollide(self, self.units_sprites, False)
+                            if self.mask.overlap(spr.mask, (spr.rect.x - self.rect.x - 3, spr.rect.y - self.rect.y - 3))
+                            and spr != self]
+
+            # Физика отталкивания от препятствия
+
+            if collide_list:
+                for el in collide_list:
+                    if self != el.target:
+                        dx = el.pos[0] - self.rect.centerx
+                        dy = el.pos[1] - self.rect.centery
+                        d = (dx ** 2 + dy ** 2) ** 0.5
+                        if d != 0:
+                            dx /= d
+                            dy /= d
+                            if el == self.target:
+                                dx, dy = -dx, -dy
+                            else:
+                                if self.pos[0] == el.pos[0] and self.target not in collide_list:
+                                    dx += 1
+                                elif self.pos[1] == el.pos[1] and self.target not in collide_list:
+                                    dy += 1
+                                if self.pos[0] > el.pos[0]:
+                                    dx -= randint(1, 3)
+                                if self.pos[0] < el.pos[0]:
+                                    dx += randint(1, 3)
+                                if self.pos[1] > el.pos[1]:
+                                    dy += randint(1, 3)
+                                if self.pos[1] < el.pos[1]:
+                                    dy -= randint(1, 3)
+                                dx, dy = -dx, dy
+                            self.rect.x += dx * self.speed
+                            self.rect.y += dy * self.speed
+                            self.pos = (self.rect.centerx, self.rect.centery)
+
+            # Движение к цели
+
+            if not pygame.sprite.collide_mask(self, self.target):
+                dx = self.target_pos[0] - self.rect.centerx
+                dy = self.target_pos[1] - self.rect.centery
+                d = (dx ** 2 + dy ** 2) ** 0.5
+                if d > 0 or self.temp_target_pos:
+                    dx /= d
+                    dy /= d
+                    self.rect.x += dx * self.speed
+                    self.rect.y += dy * self.speed
+                    self.pos = (self.rect.centerx, self.rect.centery)
+
+        # Отрисовка второго поля (изображение дублируется)
+        screen.blit(self.image, invert((self.rect.right, self.rect.bottom)))
 
     # Определение цели
 
     def targeting(self):
-        # Если цели нет, то цель по умолчанию - ближайшая башня
+        nearest_target = None
+        nearest_target_pos = (-1000, -1000)
+        nearest_tower = None
+        nearest_tower_pos = (-1000, -1000)
+
         if not self.target or type(self.target) == Tower:
-            for el in self.all_sprites:
-                if type(el) == Tower and el.user != self.user and el.field == self.field:
-                    if self.distance(self.pos, el.pos) < self.distance(self.pos, self.target_pos):
-                        self.target = el
-                        self.target_pos = self.target.pos
-        self.target_pos = self.target.pos
+            for el in self.units_sprites:
+                if el.user != self.user:
+                    if type(el) == Tower:
+                        if self.distance(self.pos, el.pos) < self.distance(self.pos, nearest_tower_pos):
+                            nearest_tower = el
+                            nearest_tower_pos = el.pos
+                    if self.distance(self.pos, el.pos) < self.visual_r:
+                        if self.distance(self.pos, el.pos) < self.distance(self.pos, nearest_target_pos):
+                            nearest_target = el
+                            nearest_target_pos = el.pos
+            if nearest_target == nearest_tower or not nearest_target:
+                self.target = nearest_tower
+                self.target_pos = nearest_tower_pos
+            else:
+                self.target = nearest_target
+                self.target_pos = nearest_target_pos
 
         # Если цель на другой стороне поля, необходимо пройти через ближайший мост (временная цель)
         if type(self) != Tower:
             bridges = [(160, 325), (410, 325)]
             temp_list = [self.rect.centery, self.target.pos[1]]
-            if self.field == 2:
-
-                bridges = [(802, 325), (1050, 325)]
-            if self.user != self.field:
+            if self.user == 2:
                 temp_list = temp_list[::-1]
             if temp_list[0] > 325 > temp_list[1]:
                 self.temp_target_pos = (-1000, -1000)
@@ -184,21 +241,19 @@ class Unit(pygame.sprite.Sprite):
 
 
 class Tower(Unit):
-    def __init__(self, pos, all_sprites, user, field, image_p='Test_tower.png', size=(60, 50)):
-        super().__init__(size, pos, image_p, 10, 15, 100, 0, all_sprites, user, field)
+    def __init__(self, pos, units_sprites, user, image_for_test='Test_tower.png', size=(60, 50)):
+        super().__init__(size, pos, image_for_test, 10, 15, 10, 100, 0, units_sprites, user)
         self.pos = pos
         self.user = user
-        self.field = field
 
 
 # Тестовый юнит ближнего боя
 
 class Melee(Unit):
-    def __init__(self, pos, attack_r, power, hp, speed, all_sprites, user, field):
-        super().__init__((60, 50), pos, 'Test_unit.png', attack_r, power, hp, speed, all_sprites, user, field)
+    def __init__(self, pos, attack_r, visual_r, power, hp, speed, units_sprites, user, image_for_test='Test_unit.png'):
+        super().__init__((60, 50), pos, image_for_test, attack_r, visual_r, power, hp, speed, units_sprites, user)
         self.pos = pos
         self.user = user
-        self.field = field
 
 
 
@@ -230,8 +285,7 @@ def menu():
 #Создание игрового поля в начале игры
 def game():
     all_sprites = pygame.sprite.Group()
-    # user1_sprites = pygame.sprite.Group()
-    # user2_sprites = pygame.sprite.Group() # Как вариант, можно в будущем при необходимости ввести
+    units_sprites = pygame.sprite.Group()
     a = Back()
     all_sprites.add(a)
     user1 = Field()
@@ -244,23 +298,15 @@ def game():
 
     # Башни 1 поля (1 и 2 игрок)
 
-    all_sprites.add(Tower((162, 536), all_sprites, 1, 1))
-    all_sprites.add(Tower((410, 536), all_sprites, 1, 1))
-    all_sprites.add(Tower((287, 601), all_sprites, 1, 1, size=(80, 65)))
+    all_sprites.add(Tower((160, 536), units_sprites, 1))
+    all_sprites.add(Tower((410, 536), units_sprites, 1))
+    all_sprites.add(Tower((287, 601), units_sprites, 1, size=(80, 65)))
 
-    all_sprites.add(Tower((162, 143), all_sprites, 2, 1))
-    all_sprites.add(Tower((413, 143), all_sprites, 2, 1))
-    all_sprites.add(Tower((287, 78), all_sprites, 2, 1, size=(80, 65)))
+    all_sprites.add(Tower((162, 143), units_sprites, 2, image_for_test='Test_tower_2.png'))
+    all_sprites.add(Tower((413, 143), units_sprites, 2, image_for_test='Test_tower_2.png'))
+    all_sprites.add(Tower((287, 78), units_sprites, 2, image_for_test='Test_tower_2.png', size=(80, 65)))
 
     # Башни 2 поля (1 и 2 игрок)
-
-    all_sprites.add(Tower((802, 143), all_sprites, 1, 2))
-    all_sprites.add(Tower((1053, 143), all_sprites, 1, 2))
-    all_sprites.add(Tower((927, 78), all_sprites, 1, 2, size=(80, 65)))
-
-    all_sprites.add(Tower((802, 536), all_sprites, 2, 2))
-    all_sprites.add(Tower((1050, 536), all_sprites, 2, 2))
-    all_sprites.add(Tower((927, 601), all_sprites, 2, 2, size=(80, 65)))
 
     running = True
     while running:
@@ -271,14 +317,13 @@ def game():
                 # Для тестов: ЛКМ - спавн юнита игрока 1, ПКМ - юнита игрока 2
                 # Создание сначала оригинального юнита, затем его клона на другом поле
                 if event.button == 1:
-                    all_sprites.add(Melee(event.pos, 10, 10, 10, 1, all_sprites, 1, 1))
-                    all_sprites.add(Melee(invert(event.pos), 10, 10, 10, 1, all_sprites, 1, 2))
+                    all_sprites.add(Melee(event.pos, 1, 100, 10, 10, 2, units_sprites, 1))
                 elif event.button == 3:
-                    all_sprites.add(Melee(event.pos, 10, 10, 10, 1, all_sprites, 2, 2))
-                    all_sprites.add(Melee(invert(event.pos), 10, 10, 10, 1, all_sprites, 2, 1))
-        all_sprites.update()
+                    all_sprites.add(Melee(invert(event.pos), 1, 100, 10, 10, 2, units_sprites, 2, image_for_test='Test_unit_2.png'))
         all_sprites.draw(screen)
+        all_sprites.update()
         pygame.display.flip()
+        clock.tick(60)
 
 
 
@@ -296,4 +341,5 @@ if __name__ == '__main__':
     running = True
     MYEVENTTYPE = pygame.USEREVENT + 1
     pygame.time.set_timer(MYEVENTTYPE, 50)
+    clock = pygame.time.Clock()
     menu()
