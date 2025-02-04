@@ -31,7 +31,7 @@ def invert(pos):
     return width - pos[0] + 2, height - pos[1] - 120
 
 
-#Задний фон игры
+# Задний фон игры
 class Back(pygame.sprite.Sprite):
     image = load_image("forest.jpg")
     image = pygame.transform.scale(image, (width, height))
@@ -43,12 +43,12 @@ class Back(pygame.sprite.Sprite):
         self.rect.y = 0
 
 
-#Класс поля игры
+# Класс поля игры
 class Field(pygame.sprite.Sprite):
     image = load_image("field1.png")
     image = pygame.transform.scale(image, (width // 2 - 160, (width // 2 - 160) * 2 - 100))
 
-    #Инициализация поля
+    # Инициализация поля
     def __init__(self, *group):
         super().__init__(*group)
         self.image = Field.image
@@ -56,6 +56,7 @@ class Field(pygame.sprite.Sprite):
         self.rect.x = 60
         self.rect.y = -160
         self.user = 1
+
 
     #Выбор поля игрока (user = 1 или 2)
     def number(self, user):
@@ -71,7 +72,19 @@ class Field(pygame.sprite.Sprite):
             raise Exception("Введен неверный номер игрового поля")
 
 
-#Класс надписей в главном меня
+class Deck(pygame.sprite.Sprite):
+    image = load_image("desk.png")
+    image = pygame.transform.scale(image, (width // 2 - 100, 150))
+    def __init__(self, pos, *group):
+        super().__init__(*group)
+        self.image = Deck.image
+        self.rect = self.image.get_rect()
+        self.rect.x = pos[0]
+        self.rect.y = pos[1]
+
+
+
+# Класс надписей в главном меня
 class Interactive(pygame.sprite.Sprite):
     #Инициализация класса, где title это название файла с изображением текста
     #Файлы должны быть в виде name.png и name1.png(name - обычный, name1 - при выборе)
@@ -92,12 +105,10 @@ class Interactive(pygame.sprite.Sprite):
         if args and args[0].type == pygame.MOUSEMOTION \
                 and self.rect.collidepoint(args[0].pos) and self.sost == 1:
             image = load_image(self.title + "1.png")
-            print(self.title + "1.png")
             self.image = image
             self.sost = 2
         if args and args[0].type == pygame.MOUSEMOTION \
                 and not self.rect.collidepoint(args[0].pos) and self.sost == 2:
-            print("bb")
             image = load_image(self.title + ".png")
             self.image = image
             self.sost = 1
@@ -108,8 +119,44 @@ class Interactive(pygame.sprite.Sprite):
             return True
 
 
-# Базовый класс для юнитов
+# класс карт внизу для выбора
+class Card(Interactive):
+    def __init__(self, title, coord, *group):
+        super().__init__(title, coord, *group)
+        self.sost = 0
+        self.pos = coord
+    def upd(self):
+        if self.sost == 0:
+            image = load_image(self.title + ".png")
+            self.image = image
+        else:
+            image = load_image(self.title + "1.png")
+            self.image = image
 
+    # value = 1, если карта выбрана игроком, 0 иначе
+    def new_value(self, value):
+        self.sost = value
+        self.upd()
+
+
+class Circl(pygame.sprite.Sprite):
+    image = load_image("circle.png")
+    image = pygame.transform.scale(image, (70, 70))
+    def __init__(self, coord, *group):
+        super().__init__(*group)
+        self.image = Circl.image
+        self.rect = self.image.get_rect()
+        self.rect.x = coord[0]
+        self.rect.y = coord[1]
+    def replace(self,coord):
+        self.rect.x = coord[0]
+        self.rect.y = coord[1]
+
+    def get_coord(self):
+        return (self.rect.x, self.rect.y)
+
+
+# Базовый класс для юнитов
 class Unit(pygame.sprite.Sprite):
     def __init__(self, size, pos, image_p, attack_r, visual_r, power, hp, speed, units_sprites, user):
         super().__init__(units_sprites)
@@ -256,22 +303,7 @@ class Melee(Unit):
         self.user = user
 
 
-#Класс доски на которой отоброжаются игровые юниты
-class Deck(pygame.sprite.Sprite):
-    def __init__(self, *group):
-        super().__init__(*group)
-        self.image = image = load_image("forest.jpg")
-        image = pygame.transform.scale(image, (width, height))
-        self.rect = self.image.get_rect()
-        self.rect.x = 60
-        self.rect.y = -150
-        self.user = 1
-
-
-
-
-
-#Главное меню игры
+# Главное меню игры
 def menu():
     all_sprites = pygame.sprite.Group()
     a = Back()
@@ -300,8 +332,10 @@ def menu():
 def game():
     all_sprites = pygame.sprite.Group()
     units_sprites = pygame.sprite.Group()
-    a = Back()
-    all_sprites.add(a)
+    cards_sprites = pygame.sprite.Group()
+    circleses = pygame.sprite.Group() # Класс с кругами при выставлении юнита
+    back = Back()
+    all_sprites.add(back)
     user1 = Field()
     user2 = Field()
     user1.number(1)
@@ -310,45 +344,124 @@ def game():
     all_sprites.add(user1)
     all_sprites.add(user2)
 
-    # Башни 1 поля (1 и 2 игрок)
+    all_sprites.add(Deck((30, 690)))
+    all_sprites.add(Deck((760, 690)))
 
+    # Башни 1 поля (1 и 2 игрок)
     all_sprites.add(Tower((169, 580), units_sprites, 1))
     all_sprites.add(Tower((502, 580), units_sprites, 1))
     all_sprites.add(Tower((337, 660), units_sprites, 1, size=(120, 95)))
-
+    # Башни 2 поля (1 и 2 игрок)
     all_sprites.add(Tower((166, 100), units_sprites, 2, image_for_test='Test_tower_2.png'))
     all_sprites.add(Tower((502, 100), units_sprites, 2, image_for_test='Test_tower_2.png'))
     all_sprites.add(Tower((335, 23), units_sprites, 2, image_for_test='Test_tower_2.png', size=(120, 95)))
 
-    # Башни 2 поля (1 и 2 игрок)
+    # Карты первого игрока(управление WASD)
+    cards1 = [Card("card_unit", (-40, 545)), Card("card_unit", (110, 545)), Card("card_unit", (260, 545)), Card("card_unit", (410, 545))]
+    cards1[0].new_value(1)
+    for el in cards1:
+        cards_sprites.add(el)
 
+    # Карты второго игрока(управление стрелками)
+    cards2 = [Card("card_unit", (700, 545)), Card("card_unit", (850, 545)), Card("card_unit", (1000, 545)), Card("card_unit", (1150, 545))]
+    cards2[0].new_value(1)
+    for el in cards2:
+        cards_sprites.add(el)
+
+    # Счетчик выбраной карты у игрока 1 и игрока 2
+    card_number2 = 0
+    card_number1 = 0
+    #Состояние игрока(0 - выбор карты, 1 - выставление карты)
+    stage1 = 0
+    stage2 = 0
+    #УПРАВЛЕНИЕ В ИГРЕ НА WASD И СТРЕЛКИ. ПЕРЕМЕЩЕНИЕ МЕЖДУ КАРТАМИ ЭТО НАЖАНИЕ ВЛЕВО ВПРАВО, ВВЕРХ - ВЫБОР КАРТЫ. ОТМЕНА ДЕЙСТВИЯ Q ИЛИ ПРАВЫЙ КОНТРОЛ. ВЫСТАВЛЕНИЕ E ИЛИ ПРАВЫЙ ШИФТ
     running = True
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                print(event.pos)
-                # Для тестов: ЛКМ - спавн юнита игрока 1, ПКМ - юнита игрока 2
-                # Создание сначала оригинального юнита, затем его клона на другом поле
-                if event.button == 1:
-                    all_sprites.add(Melee(event.pos, 1, 100, 10, 10, 2, units_sprites, 1))
-                elif event.button == 3:
-                    all_sprites.add(Melee(invert(event.pos), 1, 100, 10, 10, 2, units_sprites, 2, image_for_test='Test_unit_2.png'))
+
+            if event.type == pygame.KEYDOWN:
+                if stage1 == 0:
+                    if event.key == pygame.K_RIGHT:
+                        cards2[card_number2 % 4].new_value(0)
+                        card_number2 += 1
+                        cards2[card_number2 % 4].new_value(1)
+                    if event.key == pygame.K_LEFT:
+                        cards2[card_number2 % 4].new_value(0)
+                        card_number2 -= 1
+                        cards2[card_number2 % 4].new_value(1)
+                    if event.key == pygame.K_UP:
+                        stage1 = 1
+                        circle1 = Circl((1029, 464))
+                        circleses.add(circle1)
+
+                if stage2 == 0:
+                    if event.key == pygame.K_a:
+                        cards1[card_number1 % 4].new_value(0)
+                        card_number1 -= 1
+                        cards1[card_number1 % 4].new_value(1)
+                    if event.key == pygame.K_d:
+                        cards1[card_number1 % 4].new_value(0)
+                        card_number1 += 1
+                        cards1[card_number1 % 4].new_value(1)
+                    if event.key == pygame.K_w:
+                        stage2 = 1
+                        circle2 = Circl((288, 459))
+                        circleses.add(circle2)
+
+            if stage1 == 1:
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_LEFT]:
+                    pos = circle1.get_coord()
+                    circle1.replace((max(pos[0] - 7, 795), pos[1]))
+                if keys[pygame.K_RIGHT]:
+                    pos = circle1.get_coord()
+                    circle1.replace((min(pos[0] + 7, 1255), pos[1]))
+                if keys[pygame.K_UP]:
+                    pos = circle1.get_coord()
+                    circle1.replace((pos[0], max(pos[1] - 7, 379)))
+                if keys[pygame.K_DOWN]:
+                    pos = circle1.get_coord()
+                    circle1.replace((pos[0], min(pos[1] + 7, 650)))
+                if keys[pygame.K_RCTRL]:
+                    stage1 = 0
+                    circleses.remove(circle1)
+                if keys[pygame.K_RSHIFT]:
+                    stage1 = 0
+                    circleses.remove(circle1)
+                    pos = circle1.get_coord()
+                    all_sprites.add(Melee(invert((pos[0] + 25, pos[1] + 25)), 1, 100, 10, 10, 2, units_sprites, 2, image_for_test='Test_unit_2.png'))
+
+            if stage2 == 1:
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_a]:
+                    pos = circle2.get_coord()
+                    circle2.replace((max(pos[0] - 7, 72), pos[1]))
+                if keys[pygame.K_d]:
+                    pos = circle2.get_coord()
+                    circle2.replace((min(pos[0] + 7, 518), pos[1]))
+                if keys[pygame.K_w]:
+                    pos = circle2.get_coord()
+                    circle2.replace((pos[0], max(pos[1] - 7, 379)))
+                if keys[pygame.K_s]:
+                    pos = circle2.get_coord()
+                    circle2.replace((pos[0], min(pos[1] + 7, 630)))
+                if keys[pygame.K_q]:
+                    stage2 = 0
+                    circleses.remove(circle2)
+                if keys[pygame.K_e]:
+                    stage2 = 0
+                    circleses.remove(circle2)
+                    pos = circle2.get_coord()
+                    all_sprites.add(Melee((pos[0] + 25, pos[1] + 25), 1, 100, 10, 10, 2, units_sprites, 1))
+
         all_sprites.draw(screen)
         all_sprites.update()
+        circleses.draw(screen)
+        cards_sprites.draw(screen)
         pygame.display.flip()
         clock.tick(60)
-
-
-
-
-
-
-
-
-
-
 
 
 if __name__ == '__main__':
