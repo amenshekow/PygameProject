@@ -1,3 +1,5 @@
+import copy
+
 import pygame
 import os
 import sys
@@ -121,10 +123,12 @@ class Interactive(pygame.sprite.Sprite):
 
 # класс карт внизу для выбора
 class Card(Interactive):
-    def __init__(self, title, coord, *group):
+    def __init__(self, title, coord, unit, cost,  *group):
         super().__init__(title, coord, *group)
         self.sost = 0
         self.pos = coord
+        self.unit = unit
+        self.cost = cost
     def upd(self):
         if self.sost == 0:
             image = load_image(self.title + ".png")
@@ -137,6 +141,9 @@ class Card(Interactive):
     def new_value(self, value):
         self.sost = value
         self.upd()
+
+    def get_info(self):
+        return [self.sost, self.unit, self.cost]
 
 
 class Circl(pygame.sprite.Sprite):
@@ -286,6 +293,13 @@ class Unit(pygame.sprite.Sprite):
     def distance(self, pos1, pos2):
         return ((pos2[0] - pos1[0]) ** 2 + (pos2[1] - pos1[1]) ** 2) ** 0.5
 
+    def new_coord(self, pos):
+        self.rect.centerx = pos[0]
+        self.rect.centery = pos[1]
+
+    def copy(self):
+        return Unit()
+
 
 class Tower(Unit):
     def __init__(self, pos, units_sprites, user, image_for_test='Test_tower.png', size=(95, 70)):
@@ -293,14 +307,18 @@ class Tower(Unit):
         self.pos = pos
         self.user = user
 
-
 # Тестовый юнит ближнего боя
 
 class Melee(Unit):
     def __init__(self, pos, attack_r, visual_r, power, hp, speed, units_sprites, user, image_for_test='Test_unit.png'):
         super().__init__((60, 50), pos, image_for_test, attack_r, visual_r, power, hp, speed, units_sprites, user)
+        self.my = (pos, attack_r, visual_r, power, hp, speed, units_sprites, user, image_for_test)
         self.pos = pos
         self.user = user
+
+    def __copy__(self):
+        my = self.my
+        return Melee(my[0], my[1], my[2], my[3], my[4], my[5], my[6], my[7], my[8])
 
 
 # Главное меню игры
@@ -357,13 +375,15 @@ def game():
     all_sprites.add(Tower((335, 23), units_sprites, 2, image_for_test='Test_tower_2.png', size=(120, 95)))
 
     # Карты первого игрока(управление WASD)
-    cards1 = [Card("card_unit", (-40, 545)), Card("card_unit", (110, 545)), Card("card_unit", (260, 545)), Card("card_unit", (410, 545))]
+    melee = Melee((25, 25), 1, 100, 10, 10, 2, units_sprites, 1)
+    cards1 = [Card("card_unit", (-40, 545), melee, 5), Card("card_unit", (110, 545), melee, 5), Card("card_unit", (260, 545), melee, 5), Card("card_unit", (410, 545), melee, 5)]
     cards1[0].new_value(1)
     for el in cards1:
         cards_sprites.add(el)
 
     # Карты второго игрока(управление стрелками)
-    cards2 = [Card("card_unit", (700, 545)), Card("card_unit", (850, 545)), Card("card_unit", (1000, 545)), Card("card_unit", (1150, 545))]
+    melee = Melee(invert((0, 0)), 1, 100, 10, 10, 2, units_sprites, 2, image_for_test='Test_unit_2.png')
+    cards2 = [Card("card_unit", (700, 545), melee, 5), Card("card_unit", (850, 545), melee, 5), Card("card_unit", (1000, 545), melee, 5), Card("card_unit", (1150, 545), melee, 5)]
     cards2[0].new_value(1)
     for el in cards2:
         cards_sprites.add(el)
@@ -431,8 +451,13 @@ def game():
                     stage1 = 0
                     circleses.remove(circle1)
                     pos = circle1.get_coord()
-                    all_sprites.add(Melee(invert((pos[0] + 25, pos[1] + 25)), 1, 100, 10, 10, 2, units_sprites, 2, image_for_test='Test_unit_2.png'))
-
+                    for el in cards2:
+                        inf = el.get_info()
+                        if inf[0] == 1:
+                            inf[1] = copy.copy(inf[1])
+                            inf[1].new_coord(invert((pos[0] + 25, pos[1] + 25)))
+                            all_sprites.add(inf[1])
+                            break
             if stage2 == 1:
                 keys = pygame.key.get_pressed()
                 if keys[pygame.K_a]:
@@ -454,7 +479,13 @@ def game():
                     stage2 = 0
                     circleses.remove(circle2)
                     pos = circle2.get_coord()
-                    all_sprites.add(Melee((pos[0] + 25, pos[1] + 25), 1, 100, 10, 10, 2, units_sprites, 1))
+                    for el in cards1:
+                        inf = el.get_info()
+                        if inf[0] == 1:
+                            inf[1] = copy.copy(inf[1])
+                            inf[1].new_coord((pos[0] + 25, pos[1] + 25))
+                            all_sprites.add(inf[1])
+                            break
 
         all_sprites.draw(screen)
         all_sprites.update()
