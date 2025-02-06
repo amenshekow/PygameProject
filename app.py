@@ -1,10 +1,11 @@
-import copy
-
 import pygame
 import os
 import sys
+import copy
 
 from random import randint
+from time import time
+from math import atan2, degrees
 
 size = width, height = 1400, 800
 screen = pygame.display.set_mode(size)
@@ -123,7 +124,7 @@ class Interactive(pygame.sprite.Sprite):
 
 # класс карт внизу для выбора
 class Card(Interactive):
-    def __init__(self, title, coord, unit, cost,  *group):
+    def __init__(self, title, coord,unit, cost, *group):
         super().__init__(title, coord, *group)
         self.sost = 0
         self.pos = coord
@@ -165,11 +166,17 @@ class Circl(pygame.sprite.Sprite):
 
 # Базовый класс для юнитов
 class Unit(pygame.sprite.Sprite):
-    def __init__(self, size, pos, image_p, attack_r, visual_r, power, hp, speed, units_sprites, user):
+    def __init__(self, size, pos, image_p, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites=None):
         super().__init__(units_sprites)
         self.units_sprites = units_sprites
-        self.image = load_image(image_p, colorkey='black')
+        self.all_sprites = all_sprites
+        self.image = load_image(image_p)
+        if image_p[:image_p.index('.')][-1] != '2':
+            self.image_2 = load_image(image_p[:image_p.index('.')] + '_2' + image_p[image_p.index('.'):])
+        else:
+            self.image_2 = load_image(image_p[:image_p.rindex('_')] + image_p[image_p.index('.'):])
         self.image = pygame.transform.scale(self.image, size)
+        self.image_2 = pygame.transform.scale(self.image_2, size)
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
         self.rect.centerx = pos[0]
@@ -180,15 +187,34 @@ class Unit(pygame.sprite.Sprite):
         self.visual_r = visual_r
         self.power = power
         self.hp = hp
+        self.max_hp = hp
         self.speed = speed
 
         self.user = user
         self.target = None
         self.target_pos = (-1000, -1000)
 
+        self.last_attack_time = time()
+
     def update(self):
         self.targeting()
         self.moving()
+        self.attacking()
+        if self.hp != self.max_hp and self.hp > 0:
+            back_image = pygame.Surface([self.image.get_size()[0] * 0.5, 5])
+            pos = (self.pos[0] - self.image.get_size()[0] * 0.25, self.rect.y - self.image.get_size()[1] * 0.1)
+            screen.blit(back_image, pos)
+            screen.blit(back_image, invert((pos[0] + back_image.get_size()[0], pos[1] + self.image.get_size()[1] + self.image.get_size()[1] * 0.2)))
+            image = pygame.Surface([self.image.get_size()[0] * 0.5 * (self.hp / self.max_hp) - 1, 5 - 1])
+            image.fill(pygame.Color("white"))
+            pos = (self.pos[0] - self.image.get_size()[0] * 0.25 + 1, self.rect.y - self.image.get_size()[1] * 0.1)
+            screen.blit(image, pos)
+            screen.blit(image, (width - pos[0] + 2 - back_image.get_size()[0] + 2, height - pos[1] - 120 - self.image.get_size()[1] - self.image.get_size()[1] * 0.2))
+
+    # Расстояние от одного объекта до другого
+
+    def distance(self, pos1, pos2):
+        return ((pos2[0] - pos1[0]) ** 2 + (pos2[1] - pos1[1]) ** 2) ** 0.5
 
     # Движение к цели и столкновения
 
@@ -235,10 +261,12 @@ class Unit(pygame.sprite.Sprite):
 
             # Движение к цели
 
-            if not pygame.sprite.collide_mask(self, self.target):
+            if not pygame.sprite.collide_mask(self, self.target) and not self.distance(self.pos, self.target.pos) <= self.attack_r:
                 dx = self.target_pos[0] - self.rect.centerx
                 dy = self.target_pos[1] - self.rect.centery
                 d = (dx ** 2 + dy ** 2) ** 0.5
+                if d <= 0 and self.temp_target_pos:
+                    self.temp_target_pos = None
                 if d > 0 or self.temp_target_pos:
                     dx /= d
                     dy /= d
@@ -247,7 +275,7 @@ class Unit(pygame.sprite.Sprite):
                     self.pos = (self.rect.centerx, self.rect.centery)
 
         # Отрисовка второго поля (изображение дублируется)
-        screen.blit(self.image, invert((self.rect.right, self.rect.bottom)))
+        screen.blit(self.image_2, invert((self.rect.right, self.rect.bottom)))
 
     # Определение цели
 
@@ -277,11 +305,11 @@ class Unit(pygame.sprite.Sprite):
 
         # Если цель на другой стороне поля, необходимо пройти через ближайший мост (временная цель)
         if type(self) != Tower:
-            bridges = [(170, 375), (490, 375)]
+            bridges = [(170, 340), (490, 340)]
             temp_list = [self.rect.centery, self.target.pos[1]]
             if self.user == 2:
                 temp_list = temp_list[::-1]
-            if temp_list[0] > 375 > temp_list[1]:
+            if temp_list[0] > 340 > temp_list[1]:
                 self.temp_target_pos = (-1000, -1000)
                 for i in range(len(bridges)):
                     if self.distance(self.pos, bridges[i]) < self.distance(self.pos, self.temp_target_pos):
@@ -289,28 +317,34 @@ class Unit(pygame.sprite.Sprite):
             else:
                 self.temp_target_pos = None
 
-    # Расстояние от одного объекта до другого
-    def distance(self, pos1, pos2):
-        return ((pos2[0] - pos1[0]) ** 2 + (pos2[1] - pos1[1]) ** 2) ** 0.5
+    def attacking(self):
+        cur_time = time()
+        if self.distance(self.pos, self.target.pos) <= self.attack_r or pygame.sprite.collide_mask(self, self.target):
+            if cur_time - self.last_attack_time >= 1:
+                self.last_attack_time = cur_time
+                if type(self) == Ranged or type(self) == Tower:
+                    self.all_sprites.add(Projectile((40, 40), self.pos, 'arrow.png', self.distance(self.pos, self.target.pos) / 20, self.target))
+                print(self, 'attacks', self.target)
+                self.target.hp -= self.power
+                if self.target.hp <= 0:
+                    self.target.kill()
+                    self.target = None
 
     def new_coord(self, pos):
         self.rect.centerx = pos[0]
         self.rect.centery = pos[1]
 
-    def copy(self):
-        return Unit()
-
 
 class Tower(Unit):
-    def __init__(self, pos, units_sprites, user, image_for_test='Test_tower.png', size=(95, 70)):
-        super().__init__(size, pos, image_for_test, 10, 15, 10, 100, 0, units_sprites, user)
+    def __init__(self, pos, units_sprites, all_sprites, user, image_for_test='tower.png', size=(100, 100)):
+        super().__init__(size, pos, image_for_test, 200, 200, 20, 1000, 0, units_sprites, user, all_sprites=all_sprites)
         self.pos = pos
         self.user = user
 
-# Тестовый юнит ближнего боя
 
+# Тестовый юнит ближнего боя
 class Melee(Unit):
-    def __init__(self, pos, attack_r, visual_r, power, hp, speed, units_sprites, user, image_for_test='Test_unit.png'):
+    def __init__(self, pos, attack_r, visual_r, power, hp, speed, units_sprites, user, image_for_test='Test_unit_2.png'):
         super().__init__((60, 50), pos, image_for_test, attack_r, visual_r, power, hp, speed, units_sprites, user)
         self.my = (pos, attack_r, visual_r, power, hp, speed, units_sprites, user, image_for_test)
         self.pos = pos
@@ -319,6 +353,59 @@ class Melee(Unit):
     def __copy__(self):
         my = self.my
         return Melee(my[0], my[1], my[2], my[3], my[4], my[5], my[6], my[7], my[8])
+
+def create_Melee(pos, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites, image_for_test='Test_unit_2.png'):
+    return Melee(pos, attack_r, visual_r, power, hp, speed, units_sprites, user, image_for_test)
+
+# Тестовый юнит дальнего боя
+class Ranged(Unit):
+    def __init__(self, pos, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites, image_for_test='Test_unit_2.png'):
+        super().__init__((50, 40), pos, image_for_test, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites=all_sprites)
+        self.pos = pos
+        self.user = user
+    def __copy__(self):
+        my = self.my
+        return Ranged(my[0], my[1], my[2], my[3], my[4], my[5], my[6], my[7], my[8])
+
+def create_Ranged(pos, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites, image_for_test='Test_unit_2.png'):
+    return Ranged(pos, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites, image_for_test)
+
+# Класс снаряда
+class Projectile(pygame.sprite.Sprite):
+    def __init__(self, size, pos, image_p, speed, target):
+        super().__init__()
+        self.image = load_image(image_p)
+        self.image = pygame.transform.scale(self.image, size)
+        self.mask = pygame.mask.from_surface(self.image)
+        self.rect = self.image.get_rect()
+        self.rect.centerx = pos[0]
+        self.rect.centery = pos[1]
+        self.pos = pos
+
+        self.speed = speed
+        self.target = target
+
+        self.direction = True
+
+    def update(self):
+        if self.target is None or pygame.sprite.collide_mask(self, self.target):
+            self.kill()
+        dx = self.target.pos[0] - self.rect.centerx
+        dy = self.target.pos[1] - self.rect.centery
+        d = (dx ** 2 + dy ** 2) ** 0.5
+        if d > 0:
+            dx /= d
+            dy /= d
+            if self.direction:
+                self.image = pygame.transform.rotate(self.image, degrees(atan2(-dy, dx)) + 90)
+                self.rect = self.image.get_rect(center=self.rect.center)
+                self.mask = pygame.mask.from_surface(self.image)
+                self.direction = False
+            self.rect.x += dx * self.speed
+            self.rect.y += dy * self.speed
+            self.pos = (self.rect.centerx, self.rect.centery)
+
+        screen.blit(pygame.transform.rotate(self.image, 180), invert((self.rect.right, self.rect.bottom)))
 
 
 # Главное меню игры
@@ -365,25 +452,26 @@ def game():
     all_sprites.add(Deck((30, 690)))
     all_sprites.add(Deck((760, 690)))
 
-    # Башни 1 поля (1 и 2 игрок)
-    all_sprites.add(Tower((169, 580), units_sprites, 1))
-    all_sprites.add(Tower((502, 580), units_sprites, 1))
-    all_sprites.add(Tower((337, 660), units_sprites, 1, size=(120, 95)))
-    # Башни 2 поля (1 и 2 игрок)
-    all_sprites.add(Tower((166, 100), units_sprites, 2, image_for_test='Test_tower_2.png'))
-    all_sprites.add(Tower((502, 100), units_sprites, 2, image_for_test='Test_tower_2.png'))
-    all_sprites.add(Tower((335, 23), units_sprites, 2, image_for_test='Test_tower_2.png', size=(120, 95)))
+    # Башни 1 поля
+    all_sprites.add(Tower((166, 590), units_sprites, all_sprites, 1, image_for_test='tower_2.png'))
+    all_sprites.add(Tower((504, 590), units_sprites, all_sprites, 1, image_for_test='tower_2.png'))
+    all_sprites.add(Tower((337, 660), units_sprites, all_sprites, 1, image_for_test='king_tower_2.png', size=(120, 95)))
+    # Башни 2 поля
+    all_sprites.add(Tower((168, 86), units_sprites, all_sprites, 2))
+    all_sprites.add(Tower((506, 86), units_sprites, all_sprites, 2))
+    all_sprites.add(Tower((335, 23), units_sprites, all_sprites, 2, image_for_test='king_tower.png', size=(120, 95)))
 
     # Карты первого игрока(управление WASD)
-    melee = Melee((25, 25), 1, 100, 10, 10, 2, units_sprites, 1)
-    cards1 = [Card("card_unit", (-40, 545), melee, 5), Card("card_unit", (110, 545), melee, 5), Card("card_unit", (260, 545), melee, 5), Card("card_unit", (410, 545), melee, 5)]
+    cards1 = [Card("card_unit", (-40, 545), create_Melee, 5), Card("card_unit", (110, 545), create_Ranged, 5),
+              Card("card_unit", (260, 545), create_Melee, 5), Card("card_unit", (410, 545), create_Ranged, 5)]
     cards1[0].new_value(1)
     for el in cards1:
         cards_sprites.add(el)
 
+
     # Карты второго игрока(управление стрелками)
-    melee = Melee(invert((0, 0)), 1, 100, 10, 10, 2, units_sprites, 2, image_for_test='Test_unit_2.png')
-    cards2 = [Card("card_unit", (700, 545), melee, 5), Card("card_unit", (850, 545), melee, 5), Card("card_unit", (1000, 545), melee, 5), Card("card_unit", (1150, 545), melee, 5)]
+    cards2 = [Card("card_unit", (700, 545), create_Melee, 5), Card("card_unit", (850, 545), create_Ranged, 5),
+              Card("card_unit", (1000, 545), create_Melee, 5), Card("card_unit", (1150, 545), create_Ranged, 5)]
     cards2[0].new_value(1)
     for el in cards2:
         cards_sprites.add(el)
@@ -454,10 +542,11 @@ def game():
                     for el in cards2:
                         inf = el.get_info()
                         if inf[0] == 1:
-                            inf[1] = copy.copy(inf[1])
+                            inf[1] = inf[1]((-100, 900), 1, 10, 10, 100, 1, units_sprites, 2, all_sprites)
                             inf[1].new_coord(invert((pos[0] + 25, pos[1] + 25)))
                             all_sprites.add(inf[1])
                             break
+
             if stage2 == 1:
                 keys = pygame.key.get_pressed()
                 if keys[pygame.K_a]:
@@ -482,7 +571,7 @@ def game():
                     for el in cards1:
                         inf = el.get_info()
                         if inf[0] == 1:
-                            inf[1] = copy.copy(inf[1])
+                            inf[1] = inf[1]((0, 0), 10, 10, 10, 100, 2, units_sprites, 1, all_sprites, image_for_test='Test_unit_2.png')
                             inf[1].new_coord((pos[0] + 25, pos[1] + 25))
                             all_sprites.add(inf[1])
                             break
@@ -499,6 +588,6 @@ if __name__ == '__main__':
     pygame.init()
     running = True
     MYEVENTTYPE = pygame.USEREVENT + 1
-    pygame.time.set_timer(MYEVENTTYPE, 50)
+    pygame.time.set_timer(MYEVENTTYPE, 100)
     clock = pygame.time.Clock()
     menu()
