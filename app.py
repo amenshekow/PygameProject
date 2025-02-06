@@ -585,6 +585,7 @@ def game():
 
 
 if __name__ == '__main__':
+    a = 0
     pygame.init()
     running = True
     MYEVENTTYPE = pygame.USEREVENT + 1
