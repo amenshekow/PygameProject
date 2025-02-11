@@ -1,7 +1,6 @@
 import pygame
 import os
 import sys
-import copy
 
 from random import randint
 from time import time
@@ -124,12 +123,21 @@ class Interactive(pygame.sprite.Sprite):
 
 # класс карт внизу для выбора
 class Card(Interactive):
-    def __init__(self, title, coord,unit, cost, *group):
+    def __init__(self, title, coord, unit, cost, pos, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites, image_for_test='Test_unit_2.png', *group):
         super().__init__(title, coord, *group)
         self.sost = 0
-        self.pos = coord
+        self.pos = pos
+        self.attack_r = attack_r
+        self.visual_r = visual_r
+        self.power = power
+        self.hp = hp
+        self.user = user
+        self.image_ft = image_for_test
+        self.speed = speed
+        self.units_sprites = units_sprites
         self.unit = unit
         self.cost = cost
+        self.alls = all_sprites
     def upd(self):
         if self.sost == 0:
             image = load_image(self.title + ".png")
@@ -144,7 +152,9 @@ class Card(Interactive):
         self.upd()
 
     def get_info(self):
-        return [self.sost, self.unit, self.cost]
+        return [self.sost, self.unit, self.cost, self.pos, self.attack_r,
+                self.visual_r, self.power, self.hp, self.speed, self.units_sprites,
+                self.user,self.alls, self.image_ft]
 
 
 class Circl(pygame.sprite.Sprite):
@@ -462,16 +472,23 @@ def game():
     all_sprites.add(Tower((335, 23), units_sprites, all_sprites, 2, image_for_test='king_tower.png', size=(120, 95)))
 
     # Карты первого игрока(управление WASD)
-    cards1 = [Card("card_unit", (-40, 545), create_Melee, 5), Card("card_unit", (110, 545), create_Ranged, 5),
-              Card("card_unit", (260, 545), create_Melee, 5), Card("card_unit", (410, 545), create_Ranged, 5)]
+    cards1 = [Card("card_unit", (-40, 545), create_Melee, 5, (-100, 900), 15, 10, 15, 100, 1, units_sprites, 1, all_sprites),
+              Card("card_unit", (110, 545), create_Ranged, 5, (-100, 900), 200, 10, 10, 200, 1, units_sprites, 1, all_sprites),
+              Card("card_unit", (260, 545), create_Melee, 5, (-100, 900), 15, 10, 15, 100, 1, units_sprites, 1, all_sprites),
+              Card("card_unit", (410, 545), create_Ranged, 5, (-100, 900), 200, 10, 10, 200, 1, units_sprites, 1, all_sprites)]
     cards1[0].new_value(1)
     for el in cards1:
         cards_sprites.add(el)
-
+    elecsir1 = 0
+    elecsir2 = 0
+    MYEVENTTYPE = pygame.USEREVENT + 1
+    pygame.time.set_timer(MYEVENTTYPE, 2000)
 
     # Карты второго игрока(управление стрелками)
-    cards2 = [Card("card_unit", (700, 545), create_Melee, 5), Card("card_unit", (850, 545), create_Ranged, 5),
-              Card("card_unit", (1000, 545), create_Melee, 5), Card("card_unit", (1150, 545), create_Ranged, 5)]
+    cards2 = [Card("card_unit", (700, 545), create_Melee, 5, (0, 0), 15, 10, 15, 100, 2, units_sprites, 1, all_sprites),
+              Card("card_unit", (850, 545), create_Ranged, 5, (0, 0), 200, 10, 10, 50, 1, 2, units_sprites, 1, all_sprites),
+              Card("card_unit", (1000, 545), create_Melee, 5, (0, 0), 15, 10, 15, 100, 2, units_sprites, 1, all_sprites),
+              Card("card_unit", (1150, 545), create_Ranged, 5, (0, 0), 200, 10, 10, 50, 1, 2, units_sprites, 1, all_sprites)]
     cards2[0].new_value(1)
     for el in cards2:
         cards_sprites.add(el)
@@ -484,10 +501,16 @@ def game():
     stage2 = 0
     #УПРАВЛЕНИЕ В ИГРЕ НА WASD И СТРЕЛКИ. ПЕРЕМЕЩЕНИЕ МЕЖДУ КАРТАМИ ЭТО НАЖАНИЕ ВЛЕВО ВПРАВО, ВВЕРХ - ВЫБОР КАРТЫ. ОТМЕНА ДЕЙСТВИЯ Q ИЛИ ПРАВЫЙ КОНТРОЛ. ВЫСТАВЛЕНИЕ E ИЛИ ПРАВЫЙ ШИФТ
     running = True
+
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+
+            if event.type == MYEVENTTYPE:
+                elecsir1 = min(elecsir1 + 1, 10)
+                elecsir2 = min(elecsir2 + 1, 10)
+                print(elecsir1, elecsir2)
 
             if event.type == pygame.KEYDOWN:
                 if stage1 == 0:
@@ -543,6 +566,7 @@ def game():
                         inf = el.get_info()
                         if inf[0] == 1:
                             inf[1] = inf[1]((-100, 900), 1, 10, 10, 100, 1, units_sprites, 2, all_sprites)
+                            elecsir1 -= inf[2]
                             inf[1].new_coord(invert((pos[0] + 25, pos[1] + 25)))
                             all_sprites.add(inf[1])
                             break
@@ -571,8 +595,9 @@ def game():
                     for el in cards1:
                         inf = el.get_info()
                         if inf[0] == 1:
-                            inf[1] = inf[1]((0, 0), 10, 10, 10, 100, 2, units_sprites, 1, all_sprites, image_for_test='Test_unit_2.png')
+                            inf[1] = inf[1](inf[3], inf[4], inf[5], inf[6], inf[7], inf[8], inf[9], inf[10], inf[11], inf[12])
                             inf[1].new_coord((pos[0] + 25, pos[1] + 25))
+                            elecsir1 -= inf[2]
                             all_sprites.add(inf[1])
                             break
 
@@ -588,7 +613,5 @@ if __name__ == '__main__':
     a = 0
     pygame.init()
     running = True
-    MYEVENTTYPE = pygame.USEREVENT + 1
-    pygame.time.set_timer(MYEVENTTYPE, 100)
     clock = pygame.time.Clock()
     menu()
