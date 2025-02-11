@@ -154,8 +154,96 @@ class Card(Interactive):
     def get_info(self):
         return [self.sost, self.unit, self.cost, self.pos, self.attack_r,
                 self.visual_r, self.power, self.hp, self.speed, self.units_sprites,
-                self.user,self.alls, self.image_ft]
+                self.user, self.alls, self.image_ft]
 
+
+class Elecsir(pygame.sprite.Sprite):
+    image0 = load_image("elec0.png")
+    image1 = load_image("elec1.png")
+    image2 = load_image("elec2.png")
+    image3 = load_image("elec3.png")
+    image4 = load_image("elec4.png")
+    image5 = load_image("elec5.png")
+    image6 = load_image("elec6.png")
+    image7 = load_image("elec7.png")
+    image8 = load_image("elec8.png")
+    image9 = load_image("elec9.png")
+    image10 = load_image("elec10.png")
+    image0 = pygame.transform.scale(image0, (195, 720))
+    image1 = pygame.transform.scale(image1, (195, 720))
+    image2 = pygame.transform.scale(image2, (195, 720))
+    image3 = pygame.transform.scale(image3, (195, 720))
+    image4 = pygame.transform.scale(image4, (195, 720))
+    image5 = pygame.transform.scale(image5, (195, 720))
+    image6 = pygame.transform.scale(image6, (195, 720))
+    image7 = pygame.transform.scale(image7, (195, 720))
+    image8 = pygame.transform.scale(image8, (195, 720))
+    image9 = pygame.transform.scale(image9, (195, 720))
+    image10 = pygame.transform.scale(image10, (195, 720))
+    def __init__(self, pos, *group):
+        super().__init__(*group)
+        self.image = Elecsir.image0
+        self.rect = self.image.get_rect()
+        self.rect.x = pos[0]
+        self.rect.y = pos[1]
+        self.pos = pos
+    def new_value(self, value):
+        pos = self.pos
+        if value == 0:
+            self.image = Elecsir.image0
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
+        if value == 1:
+            self.image = Elecsir.image1
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
+        if value == 2:
+            self.image = Elecsir.image2
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
+        if value == 3:
+            self.image = Elecsir.image3
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
+        if value == 4:
+            self.image = Elecsir.image4
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
+        if value == 5:
+            self.image = Elecsir.image5
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
+        if value == 6:
+            self.image = Elecsir.image6
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
+        if value == 7:
+            self.image = Elecsir.image7
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
+        if value == 8:
+            self.image = Elecsir.image8
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
+        if value == 9:
+            self.image = Elecsir.image9
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
+        if value == 10:
+            self.image = Elecsir.image10
+            self.rect = self.image.get_rect()
+            self.rect.x = pos[0]
+            self.rect.y = pos[1]
 
 class Circl(pygame.sprite.Sprite):
     image = load_image("circle.png")
@@ -450,12 +538,17 @@ def game():
     cards_sprites = pygame.sprite.Group()
     circleses = pygame.sprite.Group() # Класс с кругами при выставлении юнита
     back = Back()
+    elec_sprite1 = Elecsir((555, 40))
     all_sprites.add(back)
+    all_sprites.add(elec_sprite1)
+    circleses.add(elec_sprite1)
+    elec_sprite2 = Elecsir((670, 40))
+    all_sprites.add(elec_sprite2)
+    circleses.add(elec_sprite2)
     user1 = Field()
     user2 = Field()
     user1.number(1)
     user2.number(2)
-
     all_sprites.add(user1)
     all_sprites.add(user2)
 
@@ -483,12 +576,13 @@ def game():
     elecsir2 = 0
     MYEVENTTYPE = pygame.USEREVENT + 1
     pygame.time.set_timer(MYEVENTTYPE, 2000)
-
+    MYEVENTTYPE1 = pygame.USEREVENT + 2
+    pygame.time.set_timer(MYEVENTTYPE1, 60)
     # Карты второго игрока(управление стрелками)
-    cards2 = [Card("card_unit", (700, 545), create_Melee, 5, (0, 0), 15, 10, 15, 100, 2, units_sprites, 1, all_sprites),
-              Card("card_unit", (850, 545), create_Ranged, 5, (0, 0), 200, 10, 10, 50, 1, 2, units_sprites, 1, all_sprites),
-              Card("card_unit", (1000, 545), create_Melee, 5, (0, 0), 15, 10, 15, 100, 2, units_sprites, 1, all_sprites),
-              Card("card_unit", (1150, 545), create_Ranged, 5, (0, 0), 200, 10, 10, 50, 1, 2, units_sprites, 1, all_sprites)]
+    cards2 = [Card("card_unit", (700, 545), create_Melee, 5, (0, 0), 15, 10, 15, 100, 2, units_sprites, 2, all_sprites),
+              Card("card_unit", (850, 545), create_Ranged, 5, (0, 0), 200, 10, 10, 50, 1, 2, units_sprites, 2, all_sprites),
+              Card("card_unit", (1000, 545), create_Melee, 5, (0, 0), 15, 10, 15, 100, 2, units_sprites, 2, all_sprites),
+              Card("card_unit", (1150, 545), create_Ranged, 5, (0, 0), 200, 10, 10, 50, 1, 2, units_sprites, 2, all_sprites)]
     cards2[0].new_value(1)
     for el in cards2:
         cards_sprites.add(el)
@@ -508,9 +602,12 @@ def game():
                 running = False
 
             if event.type == MYEVENTTYPE:
-                elecsir1 = min(elecsir1 + 1, 10)
-                elecsir2 = min(elecsir2 + 1, 10)
-                print(elecsir1, elecsir2)
+                if elecsir1 != 10:
+                    elecsir1 = min(elecsir1 + 1, 10)
+                    elec_sprite1.new_value(elecsir1)
+                if elecsir2 != 10:
+                    elecsir2 = min(elecsir2 + 1, 10)
+                    elec_sprite2.new_value(elecsir2)
 
             if event.type == pygame.KEYDOWN:
                 if stage1 == 0:
@@ -559,16 +656,18 @@ def game():
                     stage1 = 0
                     circleses.remove(circle1)
                 if keys[pygame.K_RSHIFT]:
-                    stage1 = 0
-                    circleses.remove(circle1)
                     pos = circle1.get_coord()
                     for el in cards2:
                         inf = el.get_info()
                         if inf[0] == 1:
-                            inf[1] = inf[1]((-100, 900), 1, 10, 10, 100, 1, units_sprites, 2, all_sprites)
-                            elecsir1 -= inf[2]
-                            inf[1].new_coord(invert((pos[0] + 25, pos[1] + 25)))
-                            all_sprites.add(inf[1])
+                            if elecsir2 >= inf[2]:
+                                inf[1] = inf[1]((-100, 900), 1, 10, 10, 100, 1, units_sprites, 2, all_sprites)
+                                elecsir2 -= inf[2]
+                                inf[1].new_coord(invert((pos[0] + 25, pos[1] + 25)))
+                                all_sprites.add(inf[1])
+                                elec_sprite2.new_value(elecsir2)
+                                stage1 = 0
+                                circleses.remove(circle1)
                             break
 
             if stage2 == 1:
@@ -589,16 +688,18 @@ def game():
                     stage2 = 0
                     circleses.remove(circle2)
                 if keys[pygame.K_e]:
-                    stage2 = 0
-                    circleses.remove(circle2)
                     pos = circle2.get_coord()
                     for el in cards1:
                         inf = el.get_info()
                         if inf[0] == 1:
-                            inf[1] = inf[1](inf[3], inf[4], inf[5], inf[6], inf[7], inf[8], inf[9], inf[10], inf[11], inf[12])
-                            inf[1].new_coord((pos[0] + 25, pos[1] + 25))
-                            elecsir1 -= inf[2]
-                            all_sprites.add(inf[1])
+                            if elecsir1 >= inf[2]:
+                                inf[1] = inf[1](inf[3], inf[4], inf[5], inf[6], inf[7], inf[8], inf[9], inf[10], inf[11], inf[12])
+                                inf[1].new_coord((pos[0] + 25, pos[1] + 25))
+                                elecsir1 -= inf[2]
+                                all_sprites.add(inf[1])
+                                elec_sprite1.new_value(elecsir1)
+                                stage2 = 0
+                                circleses.remove(circle2)
                             break
 
         all_sprites.draw(screen)
