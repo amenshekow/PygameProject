@@ -1,4 +1,4 @@
-3
+4
 knight 4372
 knight knight_moving_1_b knight_attacking_1_b knight_moving_5_r knight_attacking_5_r
 knight knight_moving_2_b knight_attacking_2_b -knight_moving_4_r -knight_attacking_4_r
@@ -17,3 +17,9 @@ archer archer_moving_2_b archer_attacking_2_b -archer_moving_4_r -archer_attacki
 archer archer_moving_3_b archer_attacking_3_b -archer_moving_3_r -archer_attacking_3_r
 archer archer_moving_4_b archer_attacking_4_b -archer_moving_2_r -archer_attacking_2_r
 archer archer_moving_5_b archer_attacking_5_b archer_moving_1_r archer_attacking_1_r
+giant 4411
+giant giant_moving_1_b giant_attacking_1_b giant_moving_5_r giant_attacking_5_r
+giant giant_moving_2_b giant_attacking_2_b -giant_moving_4_r -giant_attacking_4_r
+giant giant_moving_3_b giant_attacking_3_b -giant_moving_3_r -giant_attacking_3_r
+giant giant_moving_4_b giant_attacking_4_b -giant_moving_2_r -giant_attacking_2_r
+giant giant_moving_5_b giant_attacking_5_b giant_moving_1_r giant_attacking_1_r

@@ -204,7 +204,6 @@ class Unit(pygame.sprite.Sprite):
         self.last_update_time = 0
         self.last_move_time = 0
 
-
     def cut_sheet(self):
         self.frames = []
         self.frames2 = []
@@ -241,7 +240,7 @@ class Unit(pygame.sprite.Sprite):
         self.targeting()
 
         self.last_update_time += 1
-        if self.last_update_time == self.speed * 3:
+        if self.last_update_time == self.speed * 4:
             self.last_update_time = 0
             self.cur_frame = (self.cur_frame + 1) % len(self.frames)
             self.image = self.frames[self.cur_frame]
@@ -395,7 +394,7 @@ class Unit(pygame.sprite.Sprite):
                         if self.distance(self.pos, el.pos) < self.distance(self.pos, nearest_target_pos):
                             nearest_target = el
                             nearest_target_pos = el.pos
-            if nearest_target == nearest_tower or not nearest_target:
+            if (nearest_target == nearest_tower or not nearest_target) or type(self) == Siege:
                 self.target = nearest_tower
                 self.target_pos = nearest_tower_pos
             else:
@@ -418,10 +417,10 @@ class Unit(pygame.sprite.Sprite):
 
     def attacking(self):
         cur_time = time()
-        if self.distance(self.pos, self.target.pos) <= self.attack_r or pygame.sprite.collide_rect(self, self.target) \
+        if self.distance(self.pos, self.target.pos) <= self.attack_r or pygame.sprite.collide_mask(self, self.target) \
                 or type(pygame.sprite.spritecollideany(self, self.all_sprites)) == Tower:
+            self.status = 1
             if cur_time - self.last_attack_time >= 1:
-                self.status = 1
                 self.last_attack_time = cur_time
                 if type(self) == Ranged or type(self) == Princess:
                     self.all_sprites.add(Projectile((40, 40), self.pos, 'arrow.png', self.distance(self.pos, self.target.pos) / 20, self.target))
@@ -458,8 +457,8 @@ class Ranged(Unit):
 
 # Юнит осады
 class Siege(Unit):
-    def __init__(self, pos, name, attack_r, visual_r, power, hp, speed, units_sprites, user, assets):
-        super().__init__((160, 160), pos, name, attack_r, visual_r, power, hp, speed, units_sprites, user, assets)
+    def __init__(self, pos, name, attack_r, visual_r, power, hp, speed, units_sprites, all_sprites, user, assets):
+        super().__init__((160, 160), pos, name, attack_r, visual_r, power, hp, speed, units_sprites, user, assets, all_sprites=all_sprites)
         self.pos = pos
         self.user = user
 
@@ -678,7 +677,8 @@ def game():
                     stage1 = 0
                     circleses.remove(circle1)
                     pos = circle1.get_coord()
-                    all_sprites.add(Melee(invert((pos[0] + 25, pos[1] + 25)), 'knight', 1, 100, 10, 300, 2, units_sprites, all_sprites, 2, units_assets))
+                    #Melee(invert((pos[0] + 25, pos[1] + 25)), 'knight', 1, 100, 10, 300, 2, units_sprites, all_sprites, 2, units_assets)
+                    all_sprites.add(Siege(invert((pos[0] + 25, pos[1] + 25)), 'giant', 1, 100, 100, 1000, 1, units_sprites, all_sprites, 2, units_assets))
 
             if stage2 == 1:
                 keys = pygame.key.get_pressed()
