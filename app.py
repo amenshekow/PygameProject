@@ -30,7 +30,7 @@ def load_image(name, colorkey=None):
 # Зеркальные координаты для другого поля
 
 def invert(pos):
-    return width - pos[0] + 2, height - pos[1] - 120
+    return width - pos[0] + 5, height - pos[1] - 195
 
 
 # Задний фон игры
@@ -123,21 +123,23 @@ class Interactive(pygame.sprite.Sprite):
 
 # класс карт внизу для выбора
 class Card(Interactive):
-    def __init__(self, title, coord, unit, cost, pos, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites, image_for_test='Test_unit_2.png', *group):
+    def __init__(self, title, coord,  unit, cost, pos, name, attack_r, visual_r, power, hp, speed, units_sprites, all_sprites, user, assets, *group):
         super().__init__(title, coord, *group)
-        self.sost = 0
+        self.cost = cost
+        self.unit = unit
         self.pos = pos
+        self.name = name
         self.attack_r = attack_r
         self.visual_r = visual_r
         self.power = power
         self.hp = hp
-        self.user = user
-        self.image_ft = image_for_test
         self.speed = speed
         self.units_sprites = units_sprites
-        self.unit = unit
-        self.cost = cost
-        self.alls = all_sprites
+        self.all_sprites = all_sprites
+        self.user = user
+        self.assets = assets
+        self.sost = 0
+        self.pos = coord
     def upd(self):
         if self.sost == 0:
             image = load_image(self.title + ".png")
@@ -152,9 +154,18 @@ class Card(Interactive):
         self.upd()
 
     def get_info(self):
-        return [self.sost, self.unit, self.cost, self.pos, self.attack_r,
-                self.visual_r, self.power, self.hp, self.speed, self.units_sprites,
-                self.user, self.alls, self.image_ft]
+        return [self.sost,
+                self.unit, self.cost, self.pos,
+        self.name,
+        self.attack_r,
+        self.visual_r,
+        self.power,
+        self.hp,
+        self.speed,
+        self.units_sprites,
+        self.all_sprites,
+        self.user,
+        self.assets]
 
 
 class Elecsir(pygame.sprite.Sprite):
@@ -245,6 +256,7 @@ class Elecsir(pygame.sprite.Sprite):
             self.rect.x = pos[0]
             self.rect.y = pos[1]
 
+
 class Circl(pygame.sprite.Sprite):
     image = load_image("circle.png")
     image = pygame.transform.scale(image, (70, 70))
@@ -264,22 +276,35 @@ class Circl(pygame.sprite.Sprite):
 
 # Базовый класс для юнитов
 class Unit(pygame.sprite.Sprite):
-    def __init__(self, size, pos, image_p, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites=None):
+    def __init__(self, size, pos, name, attack_r, visual_r, power, hp, speed, units_sprites, user, assets, all_sprites=None):
         super().__init__(units_sprites)
         self.units_sprites = units_sprites
         self.all_sprites = all_sprites
-        self.image = load_image(image_p)
-        if image_p[:image_p.index('.')][-1] != '2':
-            self.image_2 = load_image(image_p[:image_p.index('.')] + '_2' + image_p[image_p.index('.'):])
-        else:
-            self.image_2 = load_image(image_p[:image_p.rindex('_')] + image_p[image_p.index('.'):])
+        self.assets = assets
+
+        self.name = name
+        self.user = user
+        self.size = size
+        self.dir = 1
+        self.pos = pos
+        if self.user == 2:
+            self.dir = 5
+        self.status = 0
+        self.cut_sheet()
+        self.cur_frame = 0
+        self.rev = False
+        self.image = self.frames[self.cur_frame]
+        self.image_2 = self.frames2[self.cur_frame]
         self.image = pygame.transform.scale(self.image, size)
         self.image_2 = pygame.transform.scale(self.image_2, size)
+        if self.rev:
+            self.image = pygame.transform.flip(self.image, True, False)
+            self.image_2 = pygame.transform.flip(self.image_2, True, False)
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_rect()
         self.rect.centerx = pos[0]
         self.rect.centery = pos[1]
-        self.pos = pos
+
 
         self.attack_r = attack_r
         self.visual_r = visual_r
@@ -288,16 +313,72 @@ class Unit(pygame.sprite.Sprite):
         self.max_hp = hp
         self.speed = speed
 
-        self.user = user
         self.target = None
         self.target_pos = (-1000, -1000)
 
         self.last_attack_time = time()
+        self.last_update_time = 0
+        self.last_move_time = 0
+
+    def cut_sheet(self):
+        self.frames = []
+        self.frames2 = []
+        print(type(self.assets))
+        columns = self.assets[self.name][0][self.status][0]
+        rows = self.assets[self.name][0][self.status][1]
+
+        sheet = self.assets[self.name][self.dir][0 + self.status]
+        sheet2 = self.assets[self.name][self.dir][2 + self.status]
+        if self.user == 2:
+            sheet = sheet[:-1] + 'r'
+            sheet2 = sheet2[:-1] + 'b'
+        for el in sheet, sheet2:
+            temp = el
+            el = el + '.png'
+            if el[0] == '-':
+                el = el[1:]
+                el = pygame.transform.flip(load_image(self.name + '\\' + el), True, False)
+            else:
+                el = load_image(self.name + '\\' + el)
+
+            rect = pygame.Rect(self.pos[0], self.pos[1], el.get_width() // columns,
+                                    el.get_height() // rows)
+            for j in range(rows):
+                for i in range(columns):
+                    frame_location = (rect.w * i, rect.h * j)
+                    frame = el.subsurface(pygame.Rect(frame_location, rect.size))
+                    if temp == sheet:
+                        self.frames.append(frame)
+                    else:
+                        self.frames2.append(frame)
+
 
     def update(self):
         self.targeting()
-        self.moving()
+
+        self.last_update_time += 1
+        if self.last_update_time == self.speed * 4:
+            self.last_update_time = 0
+            self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+            self.image = self.frames[self.cur_frame]
+            self.image_2 = self.frames2[self.cur_frame]
+            self.image = pygame.transform.scale(self.image, self.size)
+            self.image_2 = pygame.transform.scale(self.image_2, self.size)
+            if self.rev:
+                self.image = pygame.transform.flip(self.image, True, False)
+                self.image_2 = pygame.transform.flip(self.image_2, True, False)
+            self.mask = pygame.mask.from_surface(self.image)
+
+        self.last_move_time += 1
+        if self.last_move_time == 5:
+            self.last_move_time = 0
+            self.moving()
+
+        # Отрисовка второго поля (изображение дублируется)
+        screen.blit(self.image_2, invert((self.rect.right, self.rect.bottom)))
+
         self.attacking()
+
         if self.hp != self.max_hp and self.hp > 0:
             back_image = pygame.Surface([self.image.get_size()[0] * 0.5, 5])
             pos = (self.pos[0] - self.image.get_size()[0] * 0.25, self.rect.y - self.image.get_size()[1] * 0.1)
@@ -307,7 +388,7 @@ class Unit(pygame.sprite.Sprite):
             image.fill(pygame.Color("white"))
             pos = (self.pos[0] - self.image.get_size()[0] * 0.25 + 1, self.rect.y - self.image.get_size()[1] * 0.1)
             screen.blit(image, pos)
-            screen.blit(image, (width - pos[0] + 2 - back_image.get_size()[0] + 2, height - pos[1] - 120 - self.image.get_size()[1] - self.image.get_size()[1] * 0.2))
+            screen.blit(image, (width - pos[0] - back_image.get_size()[0] + 5, height - pos[1] - 195 - self.image.get_size()[1] - self.image.get_size()[1] * 0.2))
 
     # Расстояние от одного объекта до другого
 
@@ -341,17 +422,17 @@ class Unit(pygame.sprite.Sprite):
                                 dx, dy = -dx, -dy
                             else:
                                 if self.pos[0] == el.pos[0] and self.target not in collide_list:
-                                    dx += 1
+                                    dx += randint(-1, 1)
                                 elif self.pos[1] == el.pos[1] and self.target not in collide_list:
-                                    dy += 1
+                                    dy += randint(-1, 1)
                                 if self.pos[0] > el.pos[0]:
-                                    dx -= randint(1, 3)
+                                    dx -= randint(-1, 3)
                                 if self.pos[0] < el.pos[0]:
-                                    dx += randint(1, 3)
+                                    dx += randint(-1, 3)
                                 if self.pos[1] > el.pos[1]:
-                                    dy += randint(1, 3)
+                                    dy += randint(-1, 3)
                                 if self.pos[1] < el.pos[1]:
-                                    dy -= randint(1, 3)
+                                    dy -= randint(-1, 3)
                                 dx, dy = -dx, dy
                             self.rect.x += dx * self.speed
                             self.rect.y += dy * self.speed
@@ -359,21 +440,57 @@ class Unit(pygame.sprite.Sprite):
 
             # Движение к цели
 
-            if not pygame.sprite.collide_mask(self, self.target) and not self.distance(self.pos, self.target.pos) <= self.attack_r:
-                dx = self.target_pos[0] - self.rect.centerx
-                dy = self.target_pos[1] - self.rect.centery
-                d = (dx ** 2 + dy ** 2) ** 0.5
-                if d <= 0 and self.temp_target_pos:
-                    self.temp_target_pos = None
-                if d > 0 or self.temp_target_pos:
-                    dx /= d
-                    dy /= d
-                    self.rect.x += dx * self.speed
-                    self.rect.y += dy * self.speed
-                    self.pos = (self.rect.centerx, self.rect.centery)
+        if not pygame.sprite.collide_mask(self, self.target) and not self.distance(self.pos, self.target.pos) <= self.attack_r:
+            dx = self.target_pos[0] - self.rect.centerx
+            dy = self.target_pos[1] - self.rect.centery
+            d = (dx ** 2 + dy ** 2) ** 0.5
+            if d <= 0 and self.temp_target_pos:
+                self.temp_target_pos = None
+            if d > 0 or self.temp_target_pos:
+                dx /= d
+                dy /= d
+                self.rect.x += dx * self.speed
+                self.rect.y += dy * self.speed
+                self.pos = (self.rect.centerx, self.rect.centery)
 
-        # Отрисовка второго поля (изображение дублируется)
-        screen.blit(self.image_2, invert((self.rect.right, self.rect.bottom)))
+        rev = False
+        dx = self.target_pos[0] - self.rect.centerx
+        dy = self.target_pos[1] - self.rect.centery
+        d = (dx ** 2 + dy ** 2) ** 0.5
+        if d > 0:
+            dx /= d
+            dy /= d
+        if self.visual_r >= d or type(self.target) == Princess:
+            dir = 0
+            rev = False
+
+            if abs(dx) > abs(dy):  # Движение по X
+                if dx > 0:
+                    dir = 3
+                else:
+                    dir = 3
+                    rev = True
+            elif abs(dy) > abs(dx):  # Движение по Y
+                if dy > 0:
+                    dir = 5
+                else:
+                    dir = 1
+            if dx > 0 and dy > 0 and abs(dx) > 0.3:
+                dir = 4
+            elif dx > 0 and dy < 0 and abs(dx) > 0.3:
+                dir = 2
+            elif dx < 0 and dy > 0 and abs(dx) > 0.3:
+                dir = 4
+                rev = True
+            elif dx < 0 and dy < 0 and abs(dx) > 0.3:
+                dir = 2
+                rev = True
+
+            if (self.dir != dir or rev != self.rev) and dir != 0:
+                self.dir = dir
+                self.rev = rev
+                self.cut_sheet()
+                self.cur_frame = 0
 
     # Определение цели
 
@@ -383,10 +500,10 @@ class Unit(pygame.sprite.Sprite):
         nearest_tower = None
         nearest_tower_pos = (-1000, -1000)
 
-        if not self.target or type(self.target) == Tower:
+        if not self.target or type(self.target) == Princess:
             for el in self.units_sprites:
                 if el.user != self.user:
-                    if type(el) == Tower:
+                    if type(el) == Princess:
                         if self.distance(self.pos, el.pos) < self.distance(self.pos, nearest_tower_pos):
                             nearest_tower = el
                             nearest_tower_pos = el.pos
@@ -394,7 +511,7 @@ class Unit(pygame.sprite.Sprite):
                         if self.distance(self.pos, el.pos) < self.distance(self.pos, nearest_target_pos):
                             nearest_target = el
                             nearest_target_pos = el.pos
-            if nearest_target == nearest_tower or not nearest_target:
+            if (nearest_target == nearest_tower or not nearest_target) or type(self) == Siege:
                 self.target = nearest_tower
                 self.target_pos = nearest_tower_pos
             else:
@@ -402,8 +519,8 @@ class Unit(pygame.sprite.Sprite):
                 self.target_pos = nearest_target_pos
 
         # Если цель на другой стороне поля, необходимо пройти через ближайший мост (временная цель)
-        if type(self) != Tower:
-            bridges = [(170, 340), (490, 340)]
+        if type(self) != Princess:
+            bridges = [(160, 340), (510, 340)]
             temp_list = [self.rect.centery, self.target.pos[1]]
             if self.user == 2:
                 temp_list = temp_list[::-1]
@@ -418,55 +535,71 @@ class Unit(pygame.sprite.Sprite):
     def attacking(self):
         cur_time = time()
         if self.distance(self.pos, self.target.pos) <= self.attack_r or pygame.sprite.collide_mask(self, self.target):
+            self.status = 1
             if cur_time - self.last_attack_time >= 1:
                 self.last_attack_time = cur_time
-                if type(self) == Ranged or type(self) == Tower:
+                if type(self) == Ranged or type(self) == Princess:
                     self.all_sprites.add(Projectile((40, 40), self.pos, 'arrow.png', self.distance(self.pos, self.target.pos) / 20, self.target))
-                print(self, 'attacks', self.target)
                 self.target.hp -= self.power
                 if self.target.hp <= 0:
                     self.target.kill()
                     self.target = None
+        else:
+            self.status = 0
 
     def new_coord(self, pos):
         self.rect.centerx = pos[0]
         self.rect.centery = pos[1]
 
-
-class Tower(Unit):
-    def __init__(self, pos, units_sprites, all_sprites, user, image_for_test='tower.png', size=(100, 100)):
-        super().__init__(size, pos, image_for_test, 200, 200, 20, 1000, 0, units_sprites, user, all_sprites=all_sprites)
+class Princess(Unit):
+    def __init__(self, pos, name, units_sprites, all_sprites, user, assets, size=(120, 120)):
+        super().__init__(size, pos, name, 200, 200, 20, 1000, 0, units_sprites, user, assets, all_sprites=all_sprites)
         self.pos = pos
         self.user = user
 
 
-# Тестовый юнит ближнего боя
+# Юнит ближнего боя
 class Melee(Unit):
-    def __init__(self, pos, attack_r, visual_r, power, hp, speed, units_sprites, user, image_for_test='Test_unit_2.png'):
-        super().__init__((60, 50), pos, image_for_test, attack_r, visual_r, power, hp, speed, units_sprites, user)
-        self.my = (pos, attack_r, visual_r, power, hp, speed, units_sprites, user, image_for_test)
+    def __init__(self, pos, name, attack_r, visual_r, power, hp, speed, units_sprites, all_sprites, user, assets):
+        super().__init__((160, 160), pos, name, attack_r, visual_r, power, hp, speed, units_sprites, user, assets, all_sprites=all_sprites)
         self.pos = pos
         self.user = user
 
-    def __copy__(self):
-        my = self.my
-        return Melee(my[0], my[1], my[2], my[3], my[4], my[5], my[6], my[7], my[8])
 
-def create_Melee(pos, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites, image_for_test='Test_unit_2.png'):
-    return Melee(pos, attack_r, visual_r, power, hp, speed, units_sprites, user, image_for_test)
+def create_Melee(pos, name, attack_r, visual_r, power, hp, speed, units_sprites, all_sprites, user, assets):
+    return Melee(pos, name, attack_r, visual_r, power, hp, speed, units_sprites, all_sprites, user, assets)
 
-# Тестовый юнит дальнего боя
+
+# Юнит дальнего боя
 class Ranged(Unit):
-    def __init__(self, pos, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites, image_for_test='Test_unit_2.png'):
-        super().__init__((50, 40), pos, image_for_test, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites=all_sprites)
+    def __init__(self, pos, name, attack_r, visual_r, power, hp, speed, units_sprites, all_sprites, user, assets):
+        super().__init__((90, 90), pos, name, attack_r, visual_r, power, hp, speed, units_sprites, user, assets, all_sprites=all_sprites)
         self.pos = pos
         self.user = user
-    def __copy__(self):
-        my = self.my
-        return Ranged(my[0], my[1], my[2], my[3], my[4], my[5], my[6], my[7], my[8])
 
-def create_Ranged(pos, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites, image_for_test='Test_unit_2.png'):
-    return Ranged(pos, attack_r, visual_r, power, hp, speed, units_sprites, user, all_sprites, image_for_test)
+def create_Ranged(pos, name, attack_r, visual_r, power, hp, speed, units_sprites,  all_sprites, user, assets):
+    return Ranged(pos, name, attack_r, visual_r, power, hp, speed, units_sprites, all_sprites, user, assets)
+
+
+# Юнит осады
+class Siege(Unit):
+    def __init__(self, pos, name, attack_r, visual_r, power, hp, speed, units_sprites, all_sprites, user, assets):
+        super().__init__(pos, name, attack_r, visual_r, power, hp, speed, units_sprites, all_sprites, user, assets)
+        self.pos = pos
+        self.user = user
+
+
+def create_Siege(pos, name, attack_r, visual_r, power, hp, speed, units_sprites, user, assets, all_sprites):
+    return Siege(pos, name, attack_r, visual_r, power, hp, speed, units_sprites, user, assets, all_sprites)
+
+
+# Юнит-здание
+class Building(Unit):
+    def __init__(self, pos, name, attack_r, visual_r, power, hp, speed, units_sprites, user, assets):
+        super().__init__((160, 160), pos, name, attack_r, visual_r, power, hp, speed, units_sprites, user, assets)
+        self.pos = pos
+        self.user = user
+
 
 # Класс снаряда
 class Projectile(pygame.sprite.Sprite):
@@ -506,6 +639,26 @@ class Projectile(pygame.sprite.Sprite):
         screen.blit(pygame.transform.rotate(self.image, 180), invert((self.rect.right, self.rect.bottom)))
 
 
+class Tower(pygame.sprite.Sprite):
+    def __init__(self, size, pos, image_p, user):
+        super().__init__()
+        self.image = load_image(image_p)
+        self.image = pygame.transform.scale(self.image, size)
+        if user == 1:
+            self.image_2 = load_image(image_p[:-5] + 'r.png')
+        else:
+            self.image_2 = load_image(image_p[:-5] + 'b.png')
+        self.image_2 = pygame.transform.scale(self.image_2, size)
+        self.mask = pygame.mask.from_surface(self.image)
+        self.rect = self.image.get_rect()
+        self.rect.centerx = pos[0]
+        self.rect.centery = pos[1]
+        self.pos = pos
+
+    def update(self):
+        screen.blit(self.image_2, invert((self.rect.right, self.rect.bottom - 102)))
+
+
 # Главное меню игры
 def menu():
     all_sprites = pygame.sprite.Group()
@@ -536,7 +689,7 @@ def game():
     all_sprites = pygame.sprite.Group()
     units_sprites = pygame.sprite.Group()
     cards_sprites = pygame.sprite.Group()
-    circleses = pygame.sprite.Group() # Класс с кругами при выставлении юнита
+    circleses = pygame.sprite.Group()  # Класс с кругами при выставлении юнита
     back = Back()
     elec_sprite1 = Elecsir((555, 40))
     all_sprites.add(back)
@@ -555,37 +708,60 @@ def game():
     all_sprites.add(Deck((30, 690)))
     all_sprites.add(Deck((760, 690)))
 
-    # Башни 1 поля
-    all_sprites.add(Tower((166, 590), units_sprites, all_sprites, 1, image_for_test='tower_2.png'))
-    all_sprites.add(Tower((504, 590), units_sprites, all_sprites, 1, image_for_test='tower_2.png'))
-    all_sprites.add(Tower((337, 660), units_sprites, all_sprites, 1, image_for_test='king_tower_2.png', size=(120, 95)))
-    # Башни 2 поля
-    all_sprites.add(Tower((168, 86), units_sprites, all_sprites, 2))
-    all_sprites.add(Tower((506, 86), units_sprites, all_sprites, 2))
-    all_sprites.add(Tower((335, 23), units_sprites, all_sprites, 2, image_for_test='king_tower.png', size=(120, 95)))
+    # Подгрузка списков ассетов юнитов
+    units_assets = dict()
+    with open('units_info.txt', mode='r') as f:
+        a = []
+        for _ in range(int(f.readline()) * 6):
+            a.append(f.readline().split())
+        for el in a:
+            if el[0] not in units_assets.keys():
+                units_assets[el[0]] = [(tuple(list(map(int, list(el[1])))[:2]), tuple(list(map(int, list(el[1])))[2:]))]
+            else:
+                units_assets[el[0]].append(tuple(el[1:]))
+        for key, value in units_assets.items():
+            print(key, value)
+
+    # Башни 1 игрока
+    all_sprites.add(Tower((200, 200), (167, 595), 'princess_tower_b.png', 1))
+    all_sprites.add(Tower((200, 200), (503, 595), 'princess_tower_b.png', 1))
+    all_sprites.add(Tower((260, 260), (337, 660), 'king_tower_b.png', 1))
+    all_sprites.add(Princess((167, 540), 'princess', units_sprites, all_sprites, 1, units_assets))
+    all_sprites.add(Princess((502, 540), 'princess', units_sprites, all_sprites, 1, units_assets))
+    all_sprites.add(Princess((337, 660), 'princess', units_sprites, all_sprites, 1, units_assets, size=(120, 95)))
+
+    # Башни 2 игрока
+    all_sprites.add(Tower((200, 200), (170, 112), 'princess_tower_r.png', 2))
+    all_sprites.add(Tower((200, 200), (507, 112), 'princess_tower_r.png', 2))
+    all_sprites.add(Tower((260, 260), (335, 23), 'king_tower_r.png', 2))
+    all_sprites.add(Princess((175, 65), 'princess', units_sprites, all_sprites, 2, units_assets))
+    all_sprites.add(Princess((510, 65), 'princess', units_sprites, all_sprites, 2, units_assets))
+    all_sprites.add(Princess((335, 23), 'princess', units_sprites, all_sprites, 2, units_assets, size=(120, 95)))
+
 
     # Карты первого игрока(управление WASD)
-    cards1 = [Card("card_unit", (-40, 545), create_Melee, 5, (-100, 900), 15, 10, 15, 100, 1, units_sprites, 1, all_sprites),
-              Card("card_unit", (110, 545), create_Ranged, 5, (-100, 900), 200, 10, 10, 200, 1, units_sprites, 1, all_sprites),
-              Card("card_unit", (260, 545), create_Melee, 5, (-100, 900), 15, 10, 15, 100, 1, units_sprites, 1, all_sprites),
-              Card("card_unit", (410, 545), create_Ranged, 5, (-100, 900), 200, 10, 10, 200, 1, units_sprites, 1, all_sprites)]
+    cards1 = [
+        Card("card_unit", (-40, 545), create_Melee, 5, (0,0), "knight", 1, 10, 50, 300, 1, units_sprites, all_sprites, 1, units_assets),
+        Card("card_unit", (110, 545), create_Ranged, 3, (0,0), "archer", 50, 10, 50, 300, 1, units_sprites, all_sprites, 1, units_assets),
+        Card("card_unit", (260, 545), create_Siege, 5, (0,0), "giant", 3, 10, 50, 300, 1, units_sprites, all_sprites, 1, units_assets),
+        Card("card_unit", (410, 545), create_Siege, 5, (0,0), "gant", 3, 10, 50, 300, 1, units_sprites, all_sprites, 1, units_assets)]
     cards1[0].new_value(1)
     for el in cards1:
         cards_sprites.add(el)
-    elecsir1 = 0
-    elecsir2 = 0
-    MYEVENTTYPE = pygame.USEREVENT + 1
-    pygame.time.set_timer(MYEVENTTYPE, 2000)
-    MYEVENTTYPE1 = pygame.USEREVENT + 2
-    pygame.time.set_timer(MYEVENTTYPE1, 60)
+
     # Карты второго игрока(управление стрелками)
-    cards2 = [Card("card_unit", (700, 545), create_Melee, 5, (0, 0), 15, 10, 15, 100, 2, units_sprites, 2, all_sprites),
-              Card("card_unit", (850, 545), create_Ranged, 5, (0, 0), 200, 10, 10, 50, 1, 2, units_sprites, 2, all_sprites),
-              Card("card_unit", (1000, 545), create_Melee, 5, (0, 0), 15, 10, 15, 100, 2, units_sprites, 2, all_sprites),
-              Card("card_unit", (1150, 545), create_Ranged, 5, (0, 0), 200, 10, 10, 50, 1, 2, units_sprites, 2, all_sprites)]
+    cards2 = [Card("card_unit", (700, 545), create_Melee, 5, (0, 0), "knight", 1, 10, 50, 300, 1, units_sprites, all_sprites, 2, units_assets),
+        Card("card_unit", (850, 545), create_Ranged, 3, (0, 0), "archer", 50, 10, 50, 300, 1, units_sprites, all_sprites, 2, units_assets),
+        Card("card_unit", (1000, 545), create_Siege, 5, (0, 0), "giant", 3, 10, 50, 300, 1, units_sprites, all_sprites, 2, units_assets),
+        Card("card_unit", (1150, 545), create_Siege, 5, (0, 0), "giant", 3, 10, 50, 300, 1, units_sprites, all_sprites, 1, units_assets)]
     cards2[0].new_value(1)
     for el in cards2:
         cards_sprites.add(el)
+
+    elecsir1 = 0
+    elecsir2 = 0
+    MYEVENTTYPE1 = pygame.USEREVENT + 2
+    pygame.time.set_timer(MYEVENTTYPE1, 60)
 
     # Счетчик выбраной карты у игрока 1 и игрока 2
     card_number2 = 0
@@ -595,12 +771,10 @@ def game():
     stage2 = 0
     #УПРАВЛЕНИЕ В ИГРЕ НА WASD И СТРЕЛКИ. ПЕРЕМЕЩЕНИЕ МЕЖДУ КАРТАМИ ЭТО НАЖАНИЕ ВЛЕВО ВПРАВО, ВВЕРХ - ВЫБОР КАРТЫ. ОТМЕНА ДЕЙСТВИЯ Q ИЛИ ПРАВЫЙ КОНТРОЛ. ВЫСТАВЛЕНИЕ E ИЛИ ПРАВЫЙ ШИФТ
     running = True
-
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-
             if event.type == MYEVENTTYPE:
                 if elecsir1 != 10:
                     elecsir1 = min(elecsir1 + 1, 10)
@@ -623,6 +797,7 @@ def game():
                         stage1 = 1
                         circle1 = Circl((1029, 464))
                         circleses.add(circle1)
+
 
                 if stage2 == 0:
                     if event.key == pygame.K_a:
@@ -661,7 +836,8 @@ def game():
                         inf = el.get_info()
                         if inf[0] == 1:
                             if elecsir2 >= inf[2]:
-                                inf[1] = inf[1]((-100, 900), 1, 10, 10, 100, 1, units_sprites, 2, all_sprites)
+                                inf[1] = inf[1](inf[3], inf[4], inf[5], inf[6], inf[7], inf[8], inf[9], inf[10],
+                                                inf[11], inf[12], inf[13])
                                 elecsir2 -= inf[2]
                                 inf[1].new_coord(invert((pos[0] + 25, pos[1] + 25)))
                                 all_sprites.add(inf[1])
@@ -693,7 +869,8 @@ def game():
                         inf = el.get_info()
                         if inf[0] == 1:
                             if elecsir1 >= inf[2]:
-                                inf[1] = inf[1](inf[3], inf[4], inf[5], inf[6], inf[7], inf[8], inf[9], inf[10], inf[11], inf[12])
+                                inf[1] = inf[1](inf[3], inf[4], inf[5], inf[6], inf[7], inf[8], inf[9], inf[10],
+                                                inf[11], inf[12], inf[13])
                                 inf[1].new_coord((pos[0] + 25, pos[1] + 25))
                                 elecsir1 -= inf[2]
                                 all_sprites.add(inf[1])
@@ -706,13 +883,15 @@ def game():
         all_sprites.update()
         circleses.draw(screen)
         cards_sprites.draw(screen)
+        circleses.update()
         pygame.display.flip()
         clock.tick(60)
 
 
 if __name__ == '__main__':
-    a = 0
     pygame.init()
     running = True
+    MYEVENTTYPE = pygame.USEREVENT + 1
+    pygame.time.set_timer(MYEVENTTYPE, 2000)
     clock = pygame.time.Clock()
     menu()
