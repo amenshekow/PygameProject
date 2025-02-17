@@ -125,6 +125,7 @@ class Interactive(pygame.sprite.Sprite):
 class Card(Interactive):
     def __init__(self, title, coord,  unit, cost, pos, name, attack_r, visual_r, power, hp, speed, units_sprites, all_sprites, user, assets, *group):
         super().__init__(title, coord, *group)
+        self.image = pygame.transform.scale(self.image, (200, 200))
         self.cost = cost
         self.unit = unit
         self.pos = pos
@@ -143,9 +144,11 @@ class Card(Interactive):
     def upd(self):
         if self.sost == 0:
             image = load_image(self.title + ".png")
+            image = pygame.transform.scale(image, (200, 200))
             self.image = image
         else:
             image = load_image(self.title + "1.png")
+            image = pygame.transform.scale(image, (200, 200))
             self.image = image
 
     # value = 1, если карта выбрана игроком, 0 иначе
@@ -831,19 +834,19 @@ def game():
 
     # Карты первого игрока(управление WASD)
     cards1 = [
-        Card("card_unit", (-40, 545), create_Melee, 5, (1000,1000), "knight", 1, 200, 100, 300, 2, units_sprites, all_sprites, 1, units_assets),
-        Card("card_unit", (110, 545), create_Ranged, 3, (1000,1000), "archer", 200, 300, 50, 150, 3, units_sprites, all_sprites, 1, units_assets),
-        Card("card_unit", (260, 545), create_Siege, 5, (1000,1000), "giant", 3, 100, 50, 300, 1, units_sprites, all_sprites, 1, units_assets),
-        Card("card_unit", (410, 545), create_Building, 5, (1000,1000), "cannon", 200, 300, 150, 300, 0, units_sprites, all_sprites, 1, units_assets)]
+        Card("knight", (-13, 590), create_Melee, 4, (1000,1000), "knight", 1, 200, 100, 300, 2, units_sprites, all_sprites, 1, units_assets),
+        Card("archer", (137, 590), create_Ranged, 3, (1000,1000), "archer", 200, 300, 50, 150, 3, units_sprites, all_sprites, 1, units_assets),
+        Card("giant", (287, 590), create_Siege, 5, (1000,1000), "giant", 3, 200, 150, 500, 1, units_sprites, all_sprites, 1, units_assets),
+        Card("cannon", (437, 590), create_Building, 2, (1000,1000), "cannon", 200, 300, 150, 300, 0, units_sprites, all_sprites, 1, units_assets)]
     cards1[0].new_value(1)
     for el in cards1:
         cards_sprites.add(el)
 
     # Карты второго игрока(управление стрелками)
-    cards2 = [Card("card_unit", (700, 545), create_Melee, 1, (1000, 1000), "knight", 1, 200, 100, 300, 2, units_sprites, all_sprites, 2, units_assets),
-        Card("card_unit", (850, 545), create_Ranged, 1, (1000, 1000), "archer", 200, 300, 50, 150, 3, units_sprites, all_sprites, 2, units_assets),
-        Card("card_unit", (1000, 545), create_Siege, 1, (1000, 1000), "giant", 3, 200, 150, 1000, 1, units_sprites, all_sprites, 2, units_assets),
-        Card("card_unit", (1150, 545), create_Building, 5, (1000, 1000), "cannon", 200, 300, 150, 300, 0, units_sprites, all_sprites, 2, units_assets)]
+    cards2 = [Card("knight", (740, 590), create_Melee, 4, (1000, 1000), "knight", 1, 200, 100, 300, 2, units_sprites, all_sprites, 2, units_assets),
+        Card("archer", (890, 590), create_Ranged, 3, (1000, 1000), "archer", 200, 300, 50, 150, 3, units_sprites, all_sprites, 2, units_assets),
+        Card("giant", (1040, 590), create_Siege, 5, (1000, 1000), "giant", 3, 200, 150, 500, 1, units_sprites, all_sprites, 2, units_assets),
+        Card("cannon", (1190, 590), create_Building, 2, (1000, 1000), "cannon", 200, 300, 150, 300, 0, units_sprites, all_sprites, 2, units_assets)]
     cards2[0].new_value(1)
     for el in cards2:
         cards_sprites.add(el)

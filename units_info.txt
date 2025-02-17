@@ -5,7 +5,7 @@ knight knight_moving_2_b knight_attacking_2_b -knight_moving_4_r -knight_attacki
 knight knight_moving_3_b knight_attacking_3_b -knight_moving_3_r -knight_attacking_3_r
 knight knight_moving_4_b knight_attacking_4_b -knight_moving_2_r -knight_attacking_2_r
 knight knight_moving_5_b knight_attacking_5_b knight_moving_1_r knight_attacking_1_r
-princess 11425
+princess 11428
 princess princess_moving_1_b princess_attacking_1_b princess_moving_5_r princess_attacking_5_r
 princess princess_moving_2_b princess_attacking_2_b -princess_moving_4_r -princess_attacking_4_r
 princess princess_moving_3_b princess_attacking_3_b -princess_moving_3_r -princess_attacking_3_r
